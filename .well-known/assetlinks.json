@@ -1,43 +1,8 @@
-rules_version = '2';
-service cloud.firestore {
-  match /databases/{database}/documents {
-    function signedIn() { return request.auth != null; }
-    function myEmail() { return request.auth.token.email.lower(); }
-    function foyerData(fid) { return get(/databases/$(database)/documents/foyers/$(fid)).data; }
-
-    match /foyers/{fid} {
-      allow read: if signedIn() && (request.auth.uid in resource.data.members
-                                    || myEmail() in resource.data.invites);
-
-      allow create: if signedIn()
-        && request.resource.data.owner == request.auth.uid
-        && request.resource.data.members == [request.auth.uid]
-        && request.resource.data.admins == [request.auth.uid];
-
-      allow update: if signedIn() && (
-        // Administrateur : peut tout modifier, sauf retirer le propriétaire
-        (request.auth.uid in resource.data.admins
-          && request.resource.data.owner == resource.data.owner
-          && resource.data.owner in request.resource.data.admins
-          && resource.data.owner in request.resource.data.members)
-        // Personne invitée : peut seulement rejoindre l'espace
-        || (myEmail() in resource.data.invites
-          && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['members', 'invites', 'membres'])
-          && request.resource.data.members.toSet() == resource.data.members.toSet().union([request.auth.uid].toSet())
-          && !(myEmail() in request.resource.data.invites)
-          && request.resource.data.membres.diff(resource.data.membres).affectedKeys().hasOnly([request.auth.uid]))
-        // Membre : peut seulement modifier son propre nom
-        || (request.auth.uid in resource.data.members
-          && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['membres'])
-          && request.resource.data.membres.diff(resource.data.membres).affectedKeys().hasOnly([request.auth.uid]))
-      );
-
-      allow delete: if signedIn() && request.auth.uid == resource.data.owner;
-
-      // Feuilles, photos… : réservées aux membres de l'espace
-      match /{coll}/{docId} {
-        allow read, write: if signedIn() && request.auth.uid in foyerData(fid).members;
-      }
-    }
+[{
+  "relation": ["delegate_permission/common.handle_all_urls"],
+  "target": {
+    "namespace": "android_app",
+    "package_name": "io.github.pegaz95_ops.twa",
+    "sha256_cert_fingerprints": ["D2:55:1D:FD:44:BE:75:64:CA:1A:4B:82:87:EB:32:8A:04:38:81:1F:9A:D9:1B:67:64:F6:EC:DC:EF:A1:DA:01"]
   }
-}
+}]
